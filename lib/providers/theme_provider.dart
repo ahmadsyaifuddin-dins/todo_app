@@ -7,8 +7,9 @@ class ThemeProvider extends ChangeNotifier {
 
   bool get isDarkMode => _themeMode == ThemeMode.dark;
 
-  void toggleTheme(bool isOn) {
-    _themeMode = isOn ? ThemeMode.dark : ThemeMode.light;
+  void toggleTheme(bool currentlyDark) {
+    // Jika saat ini dark, ubah ke light dan sebaliknya
+    _themeMode = currentlyDark ? ThemeMode.light : ThemeMode.dark;
     notifyListeners();
   }
 }

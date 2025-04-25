@@ -1,70 +1,85 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'models/todo_model.dart';
-import 'screens/home_screen.dart';
 import 'providers/theme_provider.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
-// import 'package:timezone/timezone.dart' as tz;
+import 'screens/home_screen.dart';
+import 'services/notification_service.dart';
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+// Add this global key
+final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
+  // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
   await Hive.initFlutter();
+
+  // Register Todo adapter
   Hive.registerAdapter(TodoAdapter());
+
+  // Open the todo box
   await Hive.openBox<Todo>('todos');
-  WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimeZones();
 
-  const AndroidInitializationSettings androidSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  const InitializationSettings settings =
-      InitializationSettings(android: androidSettings);
-
-  await flutterLocalNotificationsPlugin.initialize(settings);
-  await Hive.initFlutter();
+  // Initialize notification service
+  await NotificationService.initialize();
 
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: const MyApp(),
+      create: (context) => ThemeProvider(),
+      child: const TodoApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class TodoApp extends StatelessWidget {
+  const TodoApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
-    return MaterialApp(
-      title: 'Dins Todo App',
-      theme: ThemeData(
-        brightness: Brightness.light,
-        primarySwatch: Colors.teal,
-        scaffoldBackgroundColor: Colors.grey[100],
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.teal,
-          foregroundColor: Colors.white,
-        ),
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.teal,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E1E1E),
-          foregroundColor: Colors.white,
-        ),
-      ),
-      themeMode: themeProvider.themeMode,
-      home: const HomeScreen(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          // Add the scaffold messenger key here
+          scaffoldMessengerKey: scaffoldMessengerKey,
+          title: 'Dins Todo App',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            primarySwatch: Colors.teal,
+            brightness: Brightness.light,
+            scaffoldBackgroundColor: Colors.white,
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              elevation: 0,
+            ),
+            cardTheme: CardTheme(
+              color: Colors.white,
+            ),
+            dialogBackgroundColor: Colors.white,
+          ),
+          darkTheme: ThemeData(
+            primarySwatch: Colors.teal,
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: Colors.grey.shade900,
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.grey.shade900,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            cardTheme: CardTheme(
+              color: Colors.grey.shade800,
+            ),
+            dialogBackgroundColor: Colors.grey.shade800,
+          ),
+          themeMode:
+              themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          home: const HomeScreen(),
+        );
+      },
     );
   }
 }
