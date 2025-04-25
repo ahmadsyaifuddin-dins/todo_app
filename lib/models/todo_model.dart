@@ -10,5 +10,8 @@ class Todo extends HiveObject {
   @HiveField(1)
   bool isDone;
 
-  Todo({required this.title, this.isDone = false});
+  @HiveField(2)
+  DateTime? deadline; // 🆕 field baru
+
+  Todo({required this.title, this.isDone = false, this.deadline});
 }

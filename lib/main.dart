@@ -4,12 +4,29 @@ import 'package:provider/provider.dart';
 import 'models/todo_model.dart';
 import 'screens/home_screen.dart';
 import 'providers/theme_provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+// import 'package:timezone/timezone.dart' as tz;
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   Hive.registerAdapter(TodoAdapter());
   await Hive.openBox<Todo>('todos');
+  WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
+
+  const AndroidInitializationSettings androidSettings =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings settings =
+      InitializationSettings(android: androidSettings);
+
+  await flutterLocalNotificationsPlugin.initialize(settings);
+  await Hive.initFlutter();
 
   runApp(
     ChangeNotifierProvider(

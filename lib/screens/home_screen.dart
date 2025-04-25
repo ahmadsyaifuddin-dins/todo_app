@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:todo_app/helpers/notification_service.dart';
 import '../models/todo_model.dart';
 import '../providers/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -23,12 +24,42 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _addTodo(String title) {
+  void _addTodo(String title) async {
     if (title.trim().isEmpty) return;
 
-    final newTodo = Todo(title: title);
-    _todoBox.add(newTodo);
-    _controller.clear();
+    // Menampilkan date picker untuk memilih tanggal deadline
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null) {
+      // Membuat Todo baru dengan deadline yang dipilih
+      final newTodo = Todo(
+        title: title,
+        deadline: picked, // simpan deadline
+      );
+
+      final id = DateTime.now()
+          .millisecondsSinceEpoch
+          .remainder(100000); // random id untuk notification
+
+      // Menambahkan Todo ke dalam Hive box
+      _todoBox.add(newTodo);
+      _controller.clear();
+
+      // Set reminder jam 5 pagi pada tanggal deadline
+      DateTime reminderTime =
+          DateTime(picked.year, picked.month, picked.day, 5);
+
+      // Mengecek apakah reminderTime lebih dari waktu sekarang
+      if (reminderTime.isAfter(DateTime.now())) {
+        // Menampilkan reminder jika waktu deadline valid
+        NotificationService.showReminder(id, title, reminderTime);
+      }
+    }
   }
 
   void _deleteTodo(int index) {
@@ -42,15 +73,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _editTodo(int index, Todo todo) {
     final editController = TextEditingController(text: todo.title);
+    DateTime? newDeadline = todo.deadline;
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Edit Todo'),
-          content: TextField(
-            controller: editController,
-            decoration: const InputDecoration(hintText: 'Judul baru...'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: editController,
+                decoration: const InputDecoration(hintText: 'Judul baru...'),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.calendar_today),
+                label: Text(newDeadline == null
+                    ? 'Pilih Deadline'
+                    : 'Ubah Deadline (${newDeadline!.toLocal().toString().split(' ')[0]})'),
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: newDeadline ?? DateTime.now(),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) {
+                    setState(() => newDeadline = picked);
+                  }
+                },
+              )
+            ],
           ),
           actions: [
             TextButton(
@@ -62,7 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 final newTitle = editController.text.trim();
                 if (newTitle.isNotEmpty) {
                   todo.title = newTitle;
-                  todo.save(); // update di Hive
+                  todo.deadline = newDeadline;
+                  todo.save(); // simpan
                 }
                 Navigator.pop(context);
               },
@@ -208,6 +264,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: ListTile(
+                          subtitle: todo.deadline != null
+                              ? Text(
+                                  'Deadline: ${todo.deadline!.toLocal().toString().split(' ')[0]}',
+                                  style: TextStyle(
+                                    color: todo.deadline!
+                                                .isBefore(DateTime.now()) &&
+                                            !todo.isDone
+                                        ? Colors.red
+                                        : Colors.grey,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                )
+                              : null,
                           leading: Checkbox.adaptive(
                             value: todo.isDone,
                             onChanged: (_) => _toggleCheck(todo),
