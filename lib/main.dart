@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'Hive Todo App',
+      title: 'Dins Todo App',
       theme: ThemeData(
         brightness: Brightness.light,
         primarySwatch: Colors.teal,

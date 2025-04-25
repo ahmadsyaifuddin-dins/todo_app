@@ -14,6 +14,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _todoBox = Hive.box<Todo>('todos');
   final _controller = TextEditingController();
+  String _searchQuery = '';
+  String _filterStatus = 'all'; // bisa: all, done, undone
 
   @override
   void dispose() {
@@ -76,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Todo App Hive 🐝'),
+        title: const Text('Dins Todo App 🐝'),
         centerTitle: true,
         actions: [
           Consumer<ThemeProvider>(
@@ -94,35 +96,88 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             // Input field + Add button
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'Tambah tugas...',
-                      filled: true,
-                      fillColor: Theme.of(context).cardColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
+                // Search Field
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Cari todo...',
+                    prefixIcon: Icon(Icons.search),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
                     ),
                   ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => _addTodo(_controller.text),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                    shape: const CircleBorder(),
-                    backgroundColor: Colors.teal,
-                  ),
-                  child: const Icon(Icons.add),
+                const SizedBox(height: 10),
+
+                // Filter Dropdown
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Filter:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    DropdownButton<String>(
+                      value: _filterStatus,
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('Semua')),
+                        DropdownMenuItem(value: 'done', child: Text('Selesai')),
+                        DropdownMenuItem(
+                            value: 'undone', child: Text('Belum Selesai')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _filterStatus = value;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Add Todo Field + Button
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          hintText: 'Tambah tugas...',
+                          filled: true,
+                          fillColor: Theme.of(context).cardColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () => _addTodo(_controller.text),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(16),
+                        shape: const CircleBorder(),
+                        backgroundColor: Colors.teal,
+                      ),
+                      child: const Icon(Icons.add),
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 20),
+
             // List Todo
             Expanded(
               child: ValueListenableBuilder(
@@ -132,10 +187,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     return const Center(child: Text('Belum ada todo 😴'));
                   }
 
+                  final filteredList = box.values.where((todo) {
+                    final matchesSearch =
+                        todo.title.toLowerCase().contains(_searchQuery);
+                    final matchesFilter = _filterStatus == 'all' ||
+                        (_filterStatus == 'done' && todo.isDone) ||
+                        (_filterStatus == 'undone' && !todo.isDone);
+                    return matchesSearch && matchesFilter;
+                  }).toList();
+
                   return ListView.builder(
-                    itemCount: box.length,
+                    itemCount: filteredList.length,
                     itemBuilder: (context, index) {
-                      final todo = box.getAt(index)!;
+                      final todo = filteredList[index];
 
                       return Card(
                         elevation: 4,
