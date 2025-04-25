@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/todo_model.dart';
+import '../providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,10 +38,57 @@ class _HomeScreenState extends State<HomeScreen> {
     todo.save(); // karena extend HiveObject
   }
 
+  void _editTodo(int index, Todo todo) {
+    final editController = TextEditingController(text: todo.title);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Todo'),
+          content: TextField(
+            controller: editController,
+            decoration: const InputDecoration(hintText: 'Judul baru...'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newTitle = editController.text.trim();
+                if (newTitle.isNotEmpty) {
+                  todo.title = newTitle;
+                  todo.save(); // update di Hive
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Todo App Hive 🐝')),
+      appBar: AppBar(
+        title: const Text('Todo App Hive 🐝'),
+        centerTitle: true,
+        actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              return Switch(
+                value: themeProvider.isDarkMode,
+                onChanged: themeProvider.toggleTheme,
+              );
+            },
+          )
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -50,15 +99,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Tambah tugas...',
+                      filled: true,
+                      fillColor: Theme.of(context).cardColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add),
+                const SizedBox(width: 8),
+                ElevatedButton(
                   onPressed: () => _addTodo(_controller.text),
-                )
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.all(16),
+                    shape: const CircleBorder(),
+                    backgroundColor: Colors.teal,
+                  ),
+                  child: const Icon(Icons.add),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -68,9 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 valueListenable: _todoBox.listenable(),
                 builder: (context, Box<Todo> box, _) {
                   if (box.isEmpty) {
-                    return const Center(
-                      child: Text('Belum ada todo 😴'),
-                    );
+                    return const Center(child: Text('Belum ada todo 😴'));
                   }
 
                   return ListView.builder(
@@ -78,21 +137,41 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemBuilder: (context, index) {
                       final todo = box.getAt(index)!;
 
-                      return ListTile(
-                        leading: Checkbox(
-                          value: todo.isDone,
-                          onChanged: (_) => _toggleCheck(todo),
+                      return Card(
+                        elevation: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        title: Text(
-                          todo.title,
-                          style: TextStyle(
-                            decoration:
-                                todo.isDone ? TextDecoration.lineThrough : null,
+                        child: ListTile(
+                          leading: Checkbox.adaptive(
+                            value: todo.isDone,
+                            onChanged: (_) => _toggleCheck(todo),
                           ),
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteTodo(index),
+                          title: Text(
+                            todo.title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              decoration: todo.isDone
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit,
+                                    color: Colors.blueAccent),
+                                onPressed: () => _editTodo(index, todo),
+                              ),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _deleteTodo(index),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
