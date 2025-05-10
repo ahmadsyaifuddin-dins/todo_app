@@ -1,8 +1,6 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import '../models/todo_model.dart';
 import '../providers/theme_provider.dart';
 import '../services/todo_service.dart';
 import '../widgets/add_todo_form.dart';
